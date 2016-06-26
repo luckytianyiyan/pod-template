@@ -18,8 +18,8 @@ module Pod
       framework = configurator.ask_with_answers("Which testing frameworks will you use", ["Specta", "Kiwi", "None"]).to_sym
       case framework
         when :specta
-          configurator.add_pod_to_podfile "Specta"
-          configurator.add_pod_to_podfile "Expecta"
+          configurator.add_pod_to_podfile "#import <Specta/Specta.h>"
+          configurator.add_pod_to_podfile "#import <Expecta/Expecta.h>"
 
           configurator.add_line_to_pch "@import Specta;"
           configurator.add_line_to_pch "@import Expecta;"
@@ -28,28 +28,34 @@ module Pod
 
         when :kiwi
           configurator.add_pod_to_podfile "Kiwi"
-          configurator.add_line_to_pch "@import Kiwi;"
+          configurator.add_line_to_pch "#import <Kiwi/Kiwi.h>"
           configurator.set_test_framework("kiwi", "m")
 
         when :none
           configurator.set_test_framework("xctest", "m")
       end
 
-      snapshots = configurator.ask_with_answers("Would you like to do view based testing", ["Yes", "No"]).to_sym
-      case snapshots
-        when :yes
-          configurator.add_pod_to_podfile "FBSnapshotTestCase"
-          configurator.add_line_to_pch "@import FBSnapshotTestCase;"
+      platform = configurator.ask_with_answers("Are you going to support iOS platforms older than 8.0", ["Yes", "No"]).to_sym
+      if platform == :yes
+          configurator.set_platform_ios7
 
-          if keep_demo == :no
-              puts " Putting demo application back in, you cannot do view tests without a host application."
-              keep_demo = :yes
-          end
+      else
+        snapshots = configurator.ask_with_answers("Would you like to do view based testing", ["Yes", "No"]).to_sym
+        case snapshots
+          when :yes
+            configurator.add_pod_to_podfile "FBSnapshotTestCase"
+            configurator.add_line_to_pch "@import FBSnapshotTestCase;"
 
-          if framework == :specta
-              configurator.add_pod_to_podfile "Expecta+Snapshots"
-              configurator.add_line_to_pch "@import Expecta_Snapshots;"
-          end
+            if keep_demo == :no
+                puts " Putting demo application back in, you cannot do view tests without a host application."
+                keep_demo = :yes
+            end
+
+            if framework == :specta
+                configurator.add_pod_to_podfile "Expecta+Snapshots"
+                configurator.add_line_to_pch "@import Expecta_Snapshots;"
+            end
+        end
       end
 
       prefix = nil
@@ -71,7 +77,7 @@ module Pod
         :remove_demo_project => (keep_demo == :no),
         :prefix => prefix
       }).run
-      
+
       # There has to be a single file in the Classes dir
       # or a framework won't be created, which is now default
       `touch Pod/Classes/ReplaceMe.m`
